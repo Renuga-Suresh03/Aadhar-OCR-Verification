@@ -4,7 +4,7 @@
 #the generated card must replicate the original aadhar to atleast 80%
 #only 1 side
 #details
-#name
+#name.....name:renuga
 #dob
 #gender
 #aadhar number
