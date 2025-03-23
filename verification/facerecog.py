@@ -175,7 +175,7 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 from PIL import Image
 
 # Aadhaar image from the "secret" folder (relative path)
-AADHAAR_IMG_PATH = os.path.join(os.path.dirname(os.getcwd()), "secret", "Swarna Latha.V_Aadhaar_Card.png")
+AADHAAR_IMG_PATH = os.path.join(os.path.dirname(os.getcwd()), "secret", "Renuga.S_Aadhaar_Card.png")
 LIVE_IMG_PATH = "live.jpg"  # Captured image
 
 # Initialize MTCNN for face detection and FaceNet for embedding extraction
