@@ -199,7 +199,7 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 from PIL import Image
 
 # Aadhaar image from the "secret" folder (relative path)
-AADHAAR_IMG_PATH = os.path.join(os.path.dirname(os.getcwd()), "secret", "Renuga.S_Aadhaar_Card.png")
+AADHAAR_IMG_PATH = os.path.join(os.path.dirname(os.getcwd()), "secret", r"C:\Projects\Aadhar-OCR-Verification\sampledata\generated_aadhars\Renu.png")
 
 # Initialize MTCNN for face detection and FaceNet for embedding extraction
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

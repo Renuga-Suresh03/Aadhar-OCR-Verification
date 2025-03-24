@@ -15,7 +15,7 @@ import re
 reader = easyocr.Reader(['en'])
 
 # Load Image
-image_path = r"C:\Projects\Aadhar-OCR-Verification\secret\Swarna Latha.V_Aadhaar_Card.png"
+image_path = r"C:\Projects\Aadhar-OCR-Verification\sampledata\generated_aadhars\Renu.png"
 
 def preprocess_image(image_path):
     img = cv2.imread(image_path)
