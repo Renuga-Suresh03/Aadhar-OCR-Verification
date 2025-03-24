@@ -1,177 +1,137 @@
-
+import os
+import base64
 from PIL import Image, ImageDraw, ImageFont
 import qrcode
-from pymongo import MongoClient
-import random
+import pymongo
 from cryptography.fernet import Fernet
-import os
-key = os.getenv("MONGO_ENCRYPTION_KEY")  # Load from environment variable
-
-# Generate and save a key for encryption (DO THIS ONCE)
-key = Fernet.generate_key()
-cipher = Fernet(key)
-
-# Save the key securely (do NOT store it in the code in real applications)
-with open("secret.key", "wb") as key_file:
-    key_file.write(key)
 
 # MongoDB Connection
-client = MongoClient("mongodb://localhost:27017")
+client = pymongo.MongoClient("mongodb://localhost:27017/")
 db = client["aadhar_db"]
 collection = db["aadhar_details"]
 
-try:
-    client.admin.command("ping")
-    print("✅ MongoDB connected successfully!")
-except Exception as e:
-    print("❌ MongoDB connection failed:", e)
+# Ensure the generated_aadhars folder exists
+output_folder = "generated_aadhars"
+os.makedirs(output_folder, exist_ok=True)
 
-# Function to generate a random Aadhaar Number
-def generate_aadhar_number():
-    return " ".join(str(random.randint(1000, 9999)) for _ in range(3))
+# Generate AES encryption key (only generate once and reuse)
+key_path = "aes_key.key"
 
-def encrypt_data(details):
-    """Encrypts a given string using the encryption key."""
-    return cipher.encrypt(details.encode()).decode()
+if os.path.exists(key_path):
+    with open(key_path, "rb") as key_file:
+        key = key_file.read()
+else:
+    key = Fernet.generate_key()
+    with open(key_path, "wb") as key_file:
+        key_file.write(key)
 
-# User Details
-user_details = {
-    "name": "Anovah Sherin H",
-    "dob": "01-01-1999",
-    "gender": "Female",
-    "aadhar_number": generate_aadhar_number()
-}
+cipher = Fernet(key)
 
-# Save to Database
-collection.insert_one(user_details)
-print("Encrypted data saved successfully!")
+def encrypt_data(data):
+    """Encrypts data using AES encryption."""
+    return cipher.encrypt(data.encode()).decode()
 
 def decrypt_data(encrypted_data):
-    """Decrypts an encrypted string using the encryption key."""
+    """Decrypts data using AES decryption."""
     return cipher.decrypt(encrypted_data.encode()).decode()
 
-# Fetch Data
-stored_data = collection.find_one({"name": encrypt_data("Anovah Sherin H")})  # Finding encrypted name
+def store_aadhaar_in_db(username, dob, gender, aadhaar_number):
+    """Stores encrypted Aadhaar details in MongoDB."""
+    encrypted_details = {
+        "name": encrypt_data(username),
+        "dob": encrypt_data(dob),
+        "gender": encrypt_data(gender),
+        "aadhaar_number": encrypt_data(aadhaar_number)
+    }
+    
+    # Insert encrypted data into MongoDB
+    collection.insert_one(encrypted_details)
+    print(f"🔒 Aadhaar details for {username} stored securely in MongoDB.")
 
-if stored_data:
-    print("Decrypted Data:")
-    print("Name:", decrypt_data(stored_data["name"]))
-    print("dob:", decrypt_data(stored_data["dob"]))
-    print("gender:", decrypt_data(stored_data["gender"]))
-    print("aadhar_number:", decrypt_data(stored_data["aadhar_number"]))
+def create_aadhaar_card(username, dob, gender, aadhaar_number, user_image_path):
+    """Generates Aadhaar card, encrypts details, stores in MongoDB, and saves as an image."""
+    
+    # Store encrypted Aadhaar details in MongoDB
+    store_aadhaar_in_db(username, dob, gender, aadhaar_number)
+    
+    # Aadhaar card dimensions
+    width, height = 900, 450
+    card = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(card)
 
+    # Load fonts
+    try:
+        font_bold = ImageFont.truetype("arialbd.ttf", 24)
+        font_regular = ImageFont.truetype("arial.ttf", 18)
+    except:
+        font_bold = font_regular = ImageFont.load_default()
 
-# Create Aadhaar Card Template
-width, height = 900, 450
-card = Image.new("RGB", (width, height), "white")
-draw = ImageDraw.Draw(card)
+    # Draw rounded border
+    border_color = (150, 150, 150)
+    draw.rounded_rectangle([(5, 5), (width - 5, height - 5)], radius=30, outline=border_color, width=5)
 
-# Load Fonts
-try:
-    font_bold = ImageFont.truetype("arialbd.ttf", 24)
-    font_regular = ImageFont.truetype("arial.ttf", 18)
-except:
-    font_bold = font_regular = ImageFont.load_default()
+    # Draw tricolor stripes
+    draw.rectangle([(120, 40), (780, 70)], fill="orange")  # Orange stripe
+    draw.rectangle([(120, 75), (780, 105)], fill="green")  # Green stripe
 
-# Draw Rounded Border
-border_color = (150, 150, 150)
-draw.rounded_rectangle([(5, 5), (width - 5, height - 5)], radius=30, outline=border_color, width=5)
+    # Add "Government of India" text inside the stripe
+    gov_text = "Government of India"
+    text_width = draw.textbbox((0, 0), gov_text, font=font_bold)[2]
+    text_x = (width - text_width) // 2  # Center align
+    draw.text((text_x, 45), gov_text, font=font_bold, fill="white")  # Place in the Orange stripe
 
-# Draw Tricolor Stripes
-draw.rectangle([(120, 40), (780, 70)], fill="orange")  # Orange stripe
-draw.rectangle([(120, 75), (780, 105)], fill="green")  # Green stripe
+    # Load and Paste Government Logo (Top Left)
+    gov_logo = Image.open("gov_logo.png").convert("RGBA")
+    gov_logo = gov_logo.resize((60, 60))
+    card.paste(gov_logo, (30, 40), gov_logo)
 
-# Add "Government of India" text
-gov_text = "Government of India"
-text_width = draw.textbbox((0, 0), gov_text, font=font_bold)[2]
-text_x = (width - text_width) // 2
-draw.text((text_x, 45), gov_text, font=font_bold, fill="white")
+    # Load and Paste Aadhaar Logo (Top Right)
+    aadhaar_logo = Image.open("aadhaar_logo.png").convert("RGBA")
+    aadhaar_logo = aadhaar_logo.resize((100, 60))
+    card.paste(aadhaar_logo, (780, 40), aadhaar_logo)
 
-# Load and Paste Government Logo (Top Left)
-gov_logo = Image.open("gov_logo.png").convert("RGBA").resize((60, 60))
-card.paste(gov_logo, (30, 40), gov_logo)
+    # Load and Paste User Image
+    if os.path.exists(user_image_path):
+        user_image = Image.open(user_image_path).convert("RGB")
+        user_image = user_image.resize((130, 130))
+        card.paste(user_image, (50, 150))
+    else:
+        # Placeholder Profile Picture (Gray silhouette)
+        profile_x, profile_y = 50, 150  # Position
+        profile_width, profile_height = 130, 130  # Size
+        draw.rectangle([(profile_x, profile_y), (profile_x + profile_width, profile_y + profile_height)], fill="lightgray", outline="black", width=3)
+        head_x = profile_x + profile_width // 2
+        draw.ellipse([(head_x - 25, profile_y + 20), (head_x + 25, profile_y + 70)], fill="gray")  # Circular head
+        draw.rectangle([(head_x - 35, profile_y + 70), (head_x + 35, profile_y + 120)], fill="gray")  # Rounded body
 
-# Load and Paste Aadhaar Logo (Top Right)
-aadhaar_logo = Image.open("aadhaar_logo.png").convert("RGBA").resize((100, 60))
-card.paste(aadhaar_logo, (780, 40), aadhaar_logo)
+    # User Details
+    details_x = 200  # X-position for text
+    details_y = 150  # Starting Y-position for text
+    line_spacing = 40
 
-# Profile Picture Placeholder
-profile_x, profile_y = 50, 150
-profile_width, profile_height = 130, 130
-draw.rectangle([(profile_x, profile_y), (profile_x + profile_width, profile_y + profile_height)], fill="lightgray", outline="black", width=3)
+    user_details = [
+        f"Name: {username}",
+        f"DOB: {dob}",
+        f"Gender: {gender}"
+    ]
 
-# Draw Profile Icon
-head_x = profile_x + profile_width // 2
-draw.ellipse([(head_x - 25, profile_y + 20), (head_x + 25, profile_y + 70)], fill="gray")
-draw.rectangle([(head_x - 35, profile_y + 70), (head_x + 35, profile_y + 120)], fill="gray")
-aadhaar_template = Image.open("aadhaar_template.jpg")
+    for i, detail in enumerate(user_details):
+        draw.text((details_x, details_y + i * line_spacing), detail, font=font_bold, fill="black")
 
-# Load user photo
-user_photo = Image.open("user_photo.jpg")
+    # Generate and Paste QR Code
+    qr_data = f"Aadhaar No: {aadhaar_number}\nName: {username}\nDOB: {dob}\nGender: {gender}"
+    qr = qrcode.make(qr_data)
+    qr = qr.resize((120, 120))  # Resize QR Code
+    card.paste(qr, (700, 150))  # Place QR Code at bottom right
 
-# Resize user photo to fit the Aadhaar template
-photo_size = (150, 180)  # Set width and height as needed
-user_photo = user_photo.resize(photo_size)
+    # Aadhaar Number
+    draw.line([(50, 320), (850, 320)], fill="red", width=5)  # Red line separator
+    draw.text((320, 350), aadhaar_number, font=font_bold, fill="black")
 
-# Define position where the photo should be placed
-photo_position = (50, 50)  # (x, y) coordinates on the template
+    # Save Aadhaar card
+    output_path = os.path.join(output_folder, f"{username}.png")
+    card.save(output_path)
+    print(f"✅ Aadhaar card saved: {output_path}")
 
-# Paste user photo onto the Aadhaar template
-aadhaar_template.paste(user_photo, photo_position)
-
-# Save the generated Aadhaar card
-aadhaar_template.save("generated_aadhaar.jpg")
-
-# Show the final Aadhaar card
-aadhaar_template.show()
-# User Details
-details_x = 200
-details_y = 150
-line_spacing = 40
-details_list = [
-    f"Name: {user_details['name']}",
-    f"DOB: {user_details['dob']}",
-    f"Gender: {user_details['gender']}",
-]
-
-for i, detail in enumerate(details_list):
-    draw.text((details_x, details_y + i * line_spacing), detail, font=font_bold, fill="black")
-
-# Generate and Paste QR Code
-qr_data = f"Aadhaar No: {user_details['aadhar_number']}\nName: {user_details['name']}\nDOB: {user_details['dob']}\nGender: {user_details['gender']}"
-qr = qrcode.make(qr_data).resize((120, 120))
-card.paste(qr, (700, 150))
-
-# Draw Red Line Separator
-draw.line([(50, 320), (850, 320)], fill="red", width=5)
-
-# Aadhaar Number
-draw.text((320, 350), user_details["aadhar_number"], font=font_bold, fill="black")
-
-# Save Aadhaar Template
-card.save("aadhaar_template.png")
-card.show()
-
-
-#task assigned to anova
-
-#this script must generate a aadhar card
-#the generated card must replicate the original aadhar to atleast 80%
-#only 1 side
-#details
-#name.....name:renuga
-#dob
-#gender
-#aadhar number
-#image
-#qr(generate code in such a way that if i scan qr i must be able to see the aadhar details in text like format)
-#add aadhar logos and indian government logos also
-
-#the following details alone  must be stored in db once we create a new aadhar(db name: aadhar_db, collection name: aadhar_details)
-
-#name
-#dob
-#gender
-#aadhar number
-
-#must encrypt and store...use aes
+# Example usage
+create_aadhaar_card("Renu", "01-01-1990", "Female", "1234 5678 9012", r"C:\Users\renug\Downloads\RENUGA S IMAGE.jpg")
