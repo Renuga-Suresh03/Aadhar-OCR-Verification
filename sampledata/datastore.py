@@ -14,10 +14,10 @@ collection = db["aadhar_details"]
 
 # Aadhaar details (Modify as needed)
 aadhaar_data = {
-    "name": fernet.encrypt("Renu".encode()).decode(),
-    "dob": fernet.encrypt("01-01-1990".encode()).decode(),
+    "name": fernet.encrypt("Swarna".encode()).decode(),
+    "dob": fernet.encrypt("01-01-1999".encode()).decode(),
     "gender": fernet.encrypt("Female".encode()).decode(),
-    "aadhaar_number": fernet.encrypt("1234 5678 9012".encode()).decode()  # Ensure spaces match OCR output
+    "aadhaar_number": fernet.encrypt("1434 5678 9012".encode()).decode()  # Ensure spaces match OCR output
 }
 
 # Clear previous records (Optional: To avoid duplicates)

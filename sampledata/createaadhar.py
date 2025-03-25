@@ -1,58 +1,13 @@
 import os
-import base64
 from PIL import Image, ImageDraw, ImageFont
 import qrcode
-import pymongo
-from cryptography.fernet import Fernet
-
-# MongoDB Connection
-client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["aadhar_db"]
-collection = db["aadhar_details"]
 
 # Ensure the generated_aadhars folder exists
 output_folder = "generated_aadhars"
 os.makedirs(output_folder, exist_ok=True)
 
-# Generate AES encryption key (only generate once and reuse)
-key_path = "aes_key.key"
-
-if os.path.exists(key_path):
-    with open(key_path, "rb") as key_file:
-        key = key_file.read()
-else:
-    key = Fernet.generate_key()
-    with open(key_path, "wb") as key_file:
-        key_file.write(key)
-
-cipher = Fernet(key)
-
-def encrypt_data(data):
-    """Encrypts data using AES encryption."""
-    return cipher.encrypt(data.encode()).decode()
-
-def decrypt_data(encrypted_data):
-    """Decrypts data using AES decryption."""
-    return cipher.decrypt(encrypted_data.encode()).decode()
-
-def store_aadhaar_in_db(username, dob, gender, aadhaar_number):
-    """Stores encrypted Aadhaar details in MongoDB."""
-    encrypted_details = {
-        "name": encrypt_data(username),
-        "dob": encrypt_data(dob),
-        "gender": encrypt_data(gender),
-        "aadhaar_number": encrypt_data(aadhaar_number)
-    }
-    
-    # Insert encrypted data into MongoDB
-    collection.insert_one(encrypted_details)
-    print(f"🔒 Aadhaar details for {username} stored securely in MongoDB.")
-
 def create_aadhaar_card(username, dob, gender, aadhaar_number, user_image_path):
-    """Generates Aadhaar card, encrypts details, stores in MongoDB, and saves as an image."""
-    
-    # Store encrypted Aadhaar details in MongoDB
-    store_aadhaar_in_db(username, dob, gender, aadhaar_number)
+    """Generates Aadhaar card and saves as an image (No DB, No Encryption)."""
     
     # Aadhaar card dimensions
     width, height = 900, 450
@@ -134,4 +89,4 @@ def create_aadhaar_card(username, dob, gender, aadhaar_number, user_image_path):
     print(f"✅ Aadhaar card saved: {output_path}")
 
 # Example usage
-create_aadhaar_card("Renu", "01-01-1990", "Female", "1234 5678 9012", r"C:\Users\renug\Downloads\RENUGA S IMAGE.jpg")
+create_aadhaar_card("Swarna", "01-01-1999", "Female", "1434 5678 9012", r"C:\Users\renug\Downloads\sorna.jpg")
