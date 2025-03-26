@@ -1,11 +1,10 @@
 import os
 import cv2
 import easyocr
-import qrcode
 from pyzbar.pyzbar import decode
 
 # Image path (Modify as needed)
-image_path = r"C:\Projects\Aadhar-OCR-Verification\uploads\Renu.png"
+image_path = r"C:\Projects\Aadhar-OCR-Verification\uploads\aadhaar.png"
 
 # Initialize EasyOCR
 reader = easyocr.Reader(["en"])
@@ -38,7 +37,7 @@ def extract_text_from_image(image_path):
     
     print("\n📝 Extracted Text from Image:", extracted_data)
     
-    # Convert extracted data into a dictionary (assuming text format matches expected Aadhaar layout)
+    # Convert extracted data into a dictionary
     image_data = {}
     for i in range(len(extracted_data)):
         if "Name:" in extracted_data[i]:
@@ -52,7 +51,7 @@ def extract_text_from_image(image_path):
 
     return image_data
 
-def compare_qr_and_text(qr_data, image_data):
+def compare_qr_and_text(qr_data, image_data, image_path):
     """Compares QR code data with extracted image text and detects mismatches."""
     if not qr_data or not image_data:
         print("\n🚨 Unable to verify Aadhaar details due to missing data.")
@@ -79,8 +78,13 @@ def compare_qr_and_text(qr_data, image_data):
         print("\n✅ Aadhaar details **MATCH** QR code. No tampering detected! 🎉")
     else:
         print("\n🚨 Aadhaar details **DO NOT MATCH** QR code! Possible tampering detected.")
+        
+        # Delete the file if details do not match
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            print(f"🗑️ File '{image_path}' has been deleted due to mismatch.")
 
 # Run verification process
 qr_data = extract_qr_data(image_path)
 image_data = extract_text_from_image(image_path)
-compare_qr_and_text(qr_data, image_data)
+compare_qr_and_text(qr_data, image_data, image_path)
