@@ -230,6 +230,7 @@ HTML_TEMPLATE = """
 def upload_page():
     return render_template_string(HTML_TEMPLATE)
 
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'aadhaar' not in request.files or 'smartcard' not in request.files:
@@ -241,10 +242,15 @@ def upload_file():
     if aadhaar.filename == '' or smartcard.filename == '':
         return jsonify({"message": "Invalid file uploaded!"}), 400
 
-    aadhaar.save(os.path.join(UPLOAD_FOLDER, aadhaar.filename))
-    smartcard.save(os.path.join(UPLOAD_FOLDER, smartcard.filename))
+    # Save files with fixed names
+    aadhaar_path = os.path.join(UPLOAD_FOLDER, "aadhaar.png")
+    smartcard_path = os.path.join(UPLOAD_FOLDER, "smart.png")
+
+    aadhaar.save(aadhaar_path)
+    smartcard.save(smartcard_path)
 
     return jsonify({"message": "Files uploaded successfully!"})
+
 
 
 if __name__ == '__main__':
