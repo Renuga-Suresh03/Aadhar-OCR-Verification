@@ -111,4 +111,4 @@ def check_template_and_proceed(filename):
         os.remove(uploaded_file_path)
 
 # Example usage
-check_template_and_proceed("renu.png")  # Change filename accordingly
+check_template_and_proceed("aadhaar.png")  # Change filename accordingly

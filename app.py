@@ -232,7 +232,20 @@ def upload_page():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    if 'aadhaar' not in request.files or 'smartcard' not in request.files:
+        return jsonify({"message": "Both Aadhaar and Smart Card files are required!"}), 400
+
+    aadhaar = request.files['aadhaar']
+    smartcard = request.files['smartcard']
+
+    if aadhaar.filename == '' or smartcard.filename == '':
+        return jsonify({"message": "Invalid file uploaded!"}), 400
+
+    aadhaar.save(os.path.join(UPLOAD_FOLDER, aadhaar.filename))
+    smartcard.save(os.path.join(UPLOAD_FOLDER, smartcard.filename))
+
     return jsonify({"message": "Files uploaded successfully!"})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
