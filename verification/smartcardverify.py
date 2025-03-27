@@ -31,25 +31,40 @@ def extract_smartcard_number(text):
 
 
 def extract_aadhaar_numbers(text):
-    """Extract Aadhaar number (12-digit format with spaces)."""
-    aadhaar_numbers = re.findall(r"\b\d{4} \d{4} \d{4}\b", text)  # Aadhaar format
+    """Extract Aadhaar number (12-digit format with spaces or without)."""
+    aadhaar_numbers = re.findall(r"\b\d{4} \d{4} \d{4}\b", text)  # Aadhaar format with spaces
+    if not aadhaar_numbers:
+        aadhaar_numbers = re.findall(r"\b\d{12}\b", text)  # Aadhaar format without spaces
+
     return aadhaar_numbers[0] if aadhaar_numbers else None  # Return first Aadhaar found
+
+
+def normalize_number(number):
+    """Remove spaces and normalize numbers for comparison."""
+    return number.replace(" ", "") if number else None
 
 
 def verify_smartcard(smartcard_number, aadhaar_number):
     """Verify if the Smart Card exists and Aadhaar number is linked."""
-    # Fetch smart card details from DB
+    smartcard_number = normalize_number(smartcard_number)
+    aadhaar_number = normalize_number(aadhaar_number)
+
+    print(f"🔍 Searching for Smart Card: {smartcard_number} in Database...")
+
     encrypted_smart_cards = collection.find({})
 
     for record in encrypted_smart_cards:
         # Decrypt stored Smart Card number
         stored_smartcard_number = fernet.decrypt(record["smart_card_number"].encode()).decode()
+        stored_smartcard_number = normalize_number(stored_smartcard_number)
 
         if stored_smartcard_number == smartcard_number:
             print(f"✅ Smart Card {smartcard_number} found in DB.")
 
             # Decrypt stored family Aadhaar numbers
-            stored_aadhaar_numbers = [fernet.decrypt(num.encode()).decode() for num in record["family_members"]]
+            stored_aadhaar_numbers = [normalize_number(fernet.decrypt(num.encode()).decode()) for num in record["family_members"]]
+
+            print(f"🔍 Stored Aadhaar Numbers in DB: {stored_aadhaar_numbers}")
 
             if aadhaar_number in stored_aadhaar_numbers:
                 print(f"✅ Aadhaar {aadhaar_number} is linked to Smart Card {smartcard_number}. Verification Success!")
@@ -65,7 +80,7 @@ def verify_smartcard(smartcard_number, aadhaar_number):
 # **Main Execution**
 def verify_smartcard_details(smartcard_image, aadhaar_image):
     """Extract & Verify Smart Card and Aadhaar details from images."""
-    
+
     # Extract text from Smart Card image
     smartcard_text = extract_text(smartcard_image)
     print("\n📄 Extracted Text from Smart Card:\n" + smartcard_text + "\n")
@@ -80,17 +95,17 @@ def verify_smartcard_details(smartcard_image, aadhaar_image):
 
     if not smartcard_number:
         print("❌ Smart Card number not found!")
-        return
+        return False
 
     if not aadhaar_number:
         print("❌ Aadhaar number not found!")
-        return
+        return False
 
-    print(f"Extracted Smart Card: {smartcard_number}")
-    print(f"Extracted Aadhaar: {aadhaar_number}")
+    print(f"🔢 Extracted Smart Card: {smartcard_number}")
+    print(f"🔢 Extracted Aadhaar: {aadhaar_number}")
 
     # Verify details
-    verify_smartcard(smartcard_number, aadhaar_number)
+    return verify_smartcard(smartcard_number, aadhaar_number)
 
 
 # **Run Verification**

@@ -5,6 +5,7 @@ from verification.templatecheck import check_template_and_proceed
 from verification.textextract import extract_text, match_with_database
 from verification.checkqr import extract_qr_data, extract_text_from_image, compare_qr_and_text
 from verification.facerecog import capture_live_image, compare_faces  # Import face recognition
+from verification.smartcardverify import verify_smartcard_details  # Import Smart Card verification
 
 app = Flask(__name__)
 
@@ -46,15 +47,21 @@ def upload_file():
 
         # **Step 3: Template Check**
         if not check_template_and_proceed("aadhaar.png"):  # Pass only filename
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ Fake Aadhaar detected!"}), 400
 
         # **Step 4: Extract Text and Match with Database**
         extracted_text, extracted_aadhaar = extract_text(aadhaar_path)
 
         if extracted_aadhaar is None:
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ Aadhaar number not found in extracted text!"}), 400
 
         if not match_with_database(extracted_text, extracted_aadhaar):
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ Aadhaar details do not match the database!"}), 400
 
         # **Step 5: QR Code Extraction and Validation**
@@ -65,15 +72,21 @@ def upload_file():
         image_data = extract_text_from_image(aadhaar_path)
 
         if qr_data is None:
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ No QR Code found in Aadhaar image!"}), 400
 
         if not compare_qr_and_text(qr_data, image_data):
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ QR code data does not match extracted text!"}), 400
 
         # **Step 6: Open Camera and Perform Face Recognition**
         print("📷 Opening webcam for face verification...")
         live_frame = capture_live_image()
         if live_frame is None:
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ Face capture failed or canceled!"}), 400
 
         # Compare faces
@@ -82,13 +95,25 @@ def upload_file():
 
         if not match_result:
             os.remove(aadhaar_path)  # Delete Aadhaar image if face doesn't match
+            os.remove(smartcard_path)
             return jsonify({"message": "❌ Not Aadhaar Valid. Not the Same User. Permission Denied."}), 400
 
-        return jsonify({"message": "✅ Aadhaar and Face Verification successful! User is eligible for loan."})
+        # **Step 7: Smart Card Verification**
+        print("🔍 Verifying Smart Card details...")
+        smartcard_verified = verify_smartcard_details(smartcard_path, aadhaar_path)
+
+        if smartcard_verified == True:
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
+            return jsonify({"message": "✅ Aadhaar, Face, and Smart Card Verification successful! User is eligible for loan."}), 200
+        else:
+            os.remove(aadhaar_path)
+            os.remove(smartcard_path)
+            return jsonify({"message": "❌ Smart Card verification failed!"}), 400
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        return jsonify({"message": "Error processing files!"}), 500
+        return jsonify({"message": f"Error processing files: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

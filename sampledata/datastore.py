@@ -20,8 +20,7 @@ aadhaar_data = {
     "aadhaar_number": fernet.encrypt("1234 5678 9012".encode()).decode()  # Ensure spaces match OCR output
 }
 
-# Clear previous records (Optional: To avoid duplicates)
-collection.delete_many({})
+
 
 # Insert encrypted data into MongoDB
 collection.insert_one(aadhaar_data)
