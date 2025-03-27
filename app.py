@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import os
 from verification.templatecheck import check_template_and_proceed
+from verification.textextract import extract_text, match_with_database
 
 app = Flask(__name__)
 
@@ -26,7 +27,7 @@ def upload_file():
     smartcard_path = os.path.join(UPLOAD_FOLDER, "smart.png")
 
     try:
-        # **Step 1: Save Files First**
+        # **Step 1: Save Files**
         aadhaar.save(aadhaar_path)
         smartcard.save(smartcard_path)
 
@@ -37,12 +38,23 @@ def upload_file():
         if not os.path.exists(aadhaar_path) or not os.path.exists(smartcard_path):
             return jsonify({"message": "❌ File not saved properly!"}), 500
 
-        # **Step 3: Proceed with template check**
-        if not check_template_and_proceed("aadhaar.png"):  # Only filename passed, function handles full path
-            os.remove(aadhaar_path)  # Delete file if Aadhaar is fake
+        # **Step 3: Proceed with Template Check**
+        if not check_template_and_proceed("aadhaar.png"):
+            os.remove(aadhaar_path)
             return jsonify({"message": "❌ Fake Aadhaar detected!"}), 400
 
-        return jsonify({"message": "✅ Aadhaar template is valid. Proceeding to text extraction..."})
+        # **Step 4: Extract Text and Verify in Database**
+        extracted_text, extracted_aadhaar = extract_text(aadhaar_path)
+
+        if extracted_aadhaar is None:
+            os.remove(aadhaar_path)
+            return jsonify({"message": "❌ Aadhaar number not found in extracted text!"}), 400
+
+        if not match_with_database(extracted_text, extracted_aadhaar):
+            os.remove(aadhaar_path)
+            return jsonify({"message": "❌ Aadhaar details do not match the database!"}), 400
+
+        return jsonify({"message": "✅ Proceeding to qr scanning..."})
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
