@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aadhaar & Smart Card Verification</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: all 0.3s ease-in-out;
+        }
+        :root {
+            --bg-color: #1e1e1e;
+            --container-bg: #2a2a2a;
+            --text-color: #ffffff;
+            --btn-bg: #28a745;
+            --btn-hover: #218838;
+            --border-color: #555;
+        }
+        .light-mode {
+            --bg-color: #f4f4f4;
+            --container-bg: #ffffff;
+            --text-color: #333;
+            --btn-bg: #007BFF;
+            --btn-hover: #0056b3;
+            --border-color: #ddd;
+        }
+        .wrapper { margin-top: 40px; text-align: center; }
+        .upload-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .container {
+            background: var(--container-bg);
+            padding: 30px;
+            border-radius: 15px;
+            width: 300px;
+            text-align: center;
+        }
+        .upload-box {
+            border: 2px dashed var(--border-color);
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        .upload-box:hover { background: rgba(200, 200, 200, 0.2); }
+        input[type="file"] { display: none; }
+        .btn {
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            background: var(--btn-bg);
+            color: white;
+            transition: all 0.3s;
+            border: none;
+        }
+        .btn:hover { background: var(--btn-hover); }
+        .preview-container {
+            display: none;
+            margin-top: 10px;
+        }
+        .preview-container img {
+            width: 80px;
+            height: auto;
+            margin-right: 10px;
+        }
+        .toggle-switch {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background: var(--btn-bg);
+            color: white;
+        }
+        #uploadBtn:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <button id="themeToggle" class="toggle-switch" onclick="toggleTheme()">Light Mode</button>
+    <div class="wrapper">
+        <h1>Aadhaar & Smart Card Verification</h1>
+        <div class="upload-container">
+            <div class="container">
+                <h2>Upload Aadhaar</h2>
+                <div class="upload-box" onclick="document.getElementById('aadhaarInput').click()">
+                    Click to Browse or Drag & Drop
+                </div>
+                <input type="file" id="aadhaarInput" accept="image/png, image/jpeg" onchange="handleFileSelect('aadhaar')">
+                <div class="preview-container" id="aadhaarPreviewContainer">
+                    <img id="aadhaarPreviewImage">
+                    <button class="btn" onclick="removeFile('aadhaar')">Delete</button>
+                </div>
+            </div>
+            <div class="container">
+                <h2>Upload Smart Card</h2>
+                <div class="upload-box" onclick="document.getElementById('smartcardInput').click()">
+                    Click to Browse or Drag & Drop
+                </div>
+                <input type="file" id="smartcardInput" accept="image/png, image/jpeg" onchange="handleFileSelect('smartcard')">
+                <div class="preview-container" id="smartcardPreviewContainer">
+                    <img id="smartcardPreviewImage">
+                    <button class="btn" onclick="removeFile('smartcard')">Delete</button>
+                </div>
+            </div>
+        </div>
+        <button class="btn" id="uploadBtn" onclick="uploadFiles()" disabled>Upload</button>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            let body = document.body;
+            let toggleBtn = document.getElementById("themeToggle");
+            body.classList.toggle("light-mode");
+            toggleBtn.innerText = body.classList.contains("light-mode") ? "Dark Mode" : "Light Mode";
+        }
+
+        function handleFileSelect(type) {
+            let input = document.getElementById(type + 'Input');
+            let file = input.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById(type + 'PreviewImage').src = e.target.result;
+                document.getElementById(type + 'PreviewContainer').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            checkFiles();
+        }
+
+        function removeFile(type) {
+            document.getElementById(type + 'Input').value = "";
+            document.getElementById(type + 'PreviewContainer').style.display = 'none';
+            checkFiles();
+        }
+
+        function checkFiles() {
+            let aadhaarFile = document.getElementById("aadhaarInput").files.length > 0;
+            let smartcardFile = document.getElementById("smartcardInput").files.length > 0;
+            document.getElementById("uploadBtn").disabled = !(aadhaarFile && smartcardFile);
+        }
+
+        function uploadFiles() {
+            let aadhaarFile = document.getElementById("aadhaarInput").files[0];
+            let smartcardFile = document.getElementById("smartcardInput").files[0];
+
+            if (!aadhaarFile || !smartcardFile) {
+                alert("Both Aadhaar and Smart Card files must be uploaded!");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("aadhaar", aadhaarFile);
+            formData.append("smartcard", smartcardFile);
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Error uploading files.");
+            });
+        }
+    </script>
+</body>
+</html>

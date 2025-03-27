@@ -1,16 +1,9 @@
-#assigned to renu
-
-#check template correctness
-#if correct proceed to textextract
-#else del file from uploads and display as fake aadhar detected
-
-
 import os
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-UPLOAD_FOLDER = r"C:\Projects\Aadhar-OCR-Verification\uploads"
+UPLOAD_FOLDER = "uploads"
 
 def generate_reference_aadhar():
     """Generates a blank Aadhaar card template dynamically (without saving)."""
@@ -100,15 +93,18 @@ def check_template_and_proceed(filename):
 
     if not os.path.exists(uploaded_file_path):
         print(f"❌ File {filename} not found in {UPLOAD_FOLDER}.")
-        return
+        return False
 
     # Check template similarity
     if compare_images(uploaded_file_path):
         print("✅ Aadhaar template is valid. Proceeding to text extraction...")
+        return True
         # Call text extraction function here (if implemented)
     else:
         print("🚨 Fake Aadhaar detected! Deleting file...")
         os.remove(uploaded_file_path)
+        return False
 
 # Example usage
-check_template_and_proceed("aadhaar.png")  # Change filename accordingly
+if __name__ == "__main__":
+    check_template_and_proceed("aadhaar.png")  # Change filename accordingly
