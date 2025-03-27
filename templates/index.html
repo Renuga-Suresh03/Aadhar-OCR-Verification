@@ -93,6 +93,14 @@
             background: gray;
             cursor: not-allowed;
         }
+        .status-message {
+            margin-top: 10px;
+            font-weight: bold;
+            color: var(--btn-bg);
+        }
+        .button-container {
+            margin-top: 20px; /* Added spacing above the upload button */
+        }
     </style>
 </head>
 <body>
@@ -123,7 +131,10 @@
                 </div>
             </div>
         </div>
-        <button class="btn" id="uploadBtn" onclick="uploadFiles()" disabled>Upload</button>
+        <div class="button-container">
+            <p id="upload-status" class="status-message"></p> <!-- Status messages will appear here -->
+            <button class="btn" id="uploadBtn" onclick="uploadFiles()" disabled>Upload</button>
+        </div>
     </div>
 
     <script>
@@ -156,10 +167,22 @@
         function checkFiles() {
             let aadhaarFile = document.getElementById("aadhaarInput").files.length > 0;
             let smartcardFile = document.getElementById("smartcardInput").files.length > 0;
-            document.getElementById("uploadBtn").disabled = !(aadhaarFile && smartcardFile);
+            let uploadBtn = document.getElementById("uploadBtn");
+            let uploadStatus = document.getElementById("upload-status");
+
+            if (aadhaarFile && smartcardFile) {
+                uploadBtn.disabled = false;
+                uploadStatus.innerText = "Files selected!..click the below button to upload!";
+            } else {
+                uploadBtn.disabled = true;
+                uploadStatus.innerText = "";
+            }
         }
 
         function uploadFiles() {
+            let uploadStatus = document.getElementById("upload-status");
+            uploadStatus.innerText = "Verification in process... Please wait.";
+
             let aadhaarFile = document.getElementById("aadhaarInput").files[0];
             let smartcardFile = document.getElementById("smartcardInput").files[0];
 
@@ -178,11 +201,11 @@
             })
             .then(response => response.json())
             .then(data => {
-                alert(data.message);
+                uploadStatus.innerText = data.message;
             })
             .catch(error => {
                 console.error("Error:", error);
-                alert("Error uploading files.");
+                uploadStatus.innerText = "Error uploading files.";
             });
         }
     </script>
