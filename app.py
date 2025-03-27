@@ -4,6 +4,7 @@ import time  # Ensures files are fully saved before processing
 from verification.templatecheck import check_template_and_proceed
 from verification.textextract import extract_text, match_with_database
 from verification.checkqr import extract_qr_data, extract_text_from_image, compare_qr_and_text
+from verification.facerecog import capture_live_image, compare_faces  # Import face recognition
 
 app = Flask(__name__)
 
@@ -69,7 +70,21 @@ def upload_file():
         if not compare_qr_and_text(qr_data, image_data):
             return jsonify({"message": "❌ QR code data does not match extracted text!"}), 400
 
-        return jsonify({"message": "✅ QR Verification successful! Proceeding to face matching..."})
+        # **Step 6: Open Camera and Perform Face Recognition**
+        print("📷 Opening webcam for face verification...")
+        live_frame = capture_live_image()
+        if live_frame is None:
+            return jsonify({"message": "❌ Face capture failed or canceled!"}), 400
+
+        # Compare faces
+        print("🔍 Comparing captured face with Aadhaar image...")
+        match_result = compare_faces(live_frame, aadhaar_path)
+
+        if not match_result:
+            os.remove(aadhaar_path)  # Delete Aadhaar image if face doesn't match
+            return jsonify({"message": "❌ Not Aadhaar Valid. Not the Same User. Permission Denied."}), 400
+
+        return jsonify({"message": "✅ Aadhaar and Face Verification successful! User is eligible for loan."})
 
     except Exception as e:
         print(f"❌ Error: {str(e)}")
